@@ -1,0 +1,334 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1><i class="fa-solid fa-shield-halved"></i> Sentinel Moderation</h1>
+        <p>Manage infrastructure administrators, active mutes, and the global security blacklist.</p>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs slide-up">
+    <button class="tab-btn active" onclick="switchTab('mutes')"><i class="fa-solid fa-volume-xmark"></i> Active
+        Mutes</button>
+    <button class="tab-btn" onclick="switchTab('admins')"><i class="fa-solid fa-user-shield"></i> Bot Admins</button>
+    <button class="tab-btn" onclick="switchTab('blacklist')"><i class="fa-solid fa-user-slash"></i> Blacklist</button>
+</div>
+
+<!-- Global Filter Section -->
+<div class="glass slide-up"
+    style="padding: 1rem 2rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 1.5rem; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <label for="global-guild-id" style="font-weight: 600; color: var(--text-secondary);"><i
+                class="fa-solid fa-server"></i> Active Guild ID:</label>
+        <input type="text" id="global-guild-id" class="input-field" style="width: 250px; margin-bottom: 0;"
+            placeholder="Enter Discord Guild ID" data-smart-id="guild" value="">
+    </div>
+    <button class="btn primary" onclick="refreshCurrentTab()"><i class="fa-solid fa-arrows-rotate"></i> Refresh
+        View</button>
+</div>
+
+<!-- Content Area -->
+<div class="tab-content" id="mutes-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3>Currently Muted Users</h3>
+    </div>
+
+    <table class="premium-table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Reason</th>
+                <th>Date Muted</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="mutes-table-body">
+            <!-- Data will be loaded here -->
+        </tbody>
+    </table>
+    <div id="mutes-empty" class="hidden" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+        <i class="fa-solid fa-circle-check"
+            style="font-size: 3rem; margin-bottom: 1rem; color: var(--accent-green);"></i>
+        <p>No active mutes found in recent infractions.</p>
+    </div>
+</div>
+
+<div class="tab-content hidden" id="admins-content">
+    <div class="glass slide-up" style="padding: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3>Bot Administrators</h3>
+            <div style="display: flex; gap: 1rem;">
+                <input type="text" id="new-admin-id" class="input-field sm" style="width: 250px; margin-bottom: 0;"
+                    placeholder="New Admin Discord ID">
+                <button class="btn primary sm" onclick="manageAdmin('add')"><i class="fa-solid fa-plus"></i> Add
+                    Admin</button>
+            </div>
+        </div>
+
+        <table class="premium-table">
+            <thead>
+                <tr>
+                    <th>Admin Name / ID</th>
+                    <th>Added On</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="admins-table-body">
+                <!-- Data will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="tab-content hidden" id="blacklist-content">
+    <div class="glass slide-up" style="padding: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3>Persistent Ban List (Blacklist)</h3>
+        </div>
+        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+            Users on this list will be <strong>instantly kicked</strong> if they attempt to rejoin the server.
+        </p>
+
+        <table class="premium-table">
+            <thead>
+                <tr>
+                    <th>Banned User</th>
+                    <th>Reason</th>
+                    <th>Banned On</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="blacklist-table-body">
+                <!-- Data will be loaded here -->
+            </tbody>
+        </table>
+        <div id="blacklist-empty" class="hidden"
+            style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+            <i class="fa-solid fa-check-double"
+                style="font-size: 3rem; margin-bottom: 1rem; color: var(--accent-green);"></i>
+            <p>Blacklist is empty.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentTab = 'mutes';
+
+    function switchTab(tabId) {
+        currentTab = tabId;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`.tab-btn[onclick="switchTab('${tabId}')"]`).classList.add('active');
+
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+        document.getElementById(`${tabId}-content`).classList.remove('hidden');
+
+        if (tabId === 'mutes') loadMutes();
+        if (tabId === 'admins') loadAdmins();
+        if (tabId === 'blacklist') loadBlacklist();
+    }
+
+    function refreshCurrentTab() {
+        const guildId = document.getElementById('global-guild-id').value;
+        if (guildId) SmartIdInput.saveId('guild', guildId);
+        if (currentTab === 'mutes') loadMutes();
+        if (currentTab === 'admins') loadAdmins();
+        if (currentTab === 'blacklist') loadBlacklist();
+    }
+
+    function loadMutes() {
+        const guildId = document.getElementById('global-guild-id').value;
+        if (!guildId) return;
+
+        fetch(`/api/mutes/${guildId}`)
+            .then(r => r.json())
+            .then(data => {
+                const body = document.getElementById('mutes-table-body');
+                const empty = document.getElementById('mutes-empty');
+                body.innerHTML = '';
+
+                if (data.length === 0) {
+                    empty.classList.remove('hidden');
+                } else {
+                    empty.classList.add('hidden');
+                    data.forEach(mute => {
+                        const date = new Date(mute.timestamp).toLocaleString();
+                        const displayName = mute.user_name || 'Unknown';
+                        body.innerHTML += `
+                            <tr class="row-item">
+                                <td>
+                                    <div style="font-weight: 600;">${displayName}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">${mute.user_id}</div>
+                                </td>
+                                <td>${mute.reason || 'N/A'}</td>
+                                <td>${date}</td>
+                                <td>
+                                    <button class="btn sm" style="background: rgba(218, 54, 51, 0.1); color: var(--danger);" 
+                                            onclick="unmuteUser('${mute.user_id}')">
+                                        <i class="fa-solid fa-user-check"></i> Unmute
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+    }
+
+    function loadAdmins() {
+        const guildId = document.getElementById('global-guild-id').value; // Just for context
+        fetch(`/api/admins/${guildId}`)
+            .then(r => r.json())
+            .then(data => {
+                const body = document.getElementById('admins-table-body');
+                body.innerHTML = '';
+                data.forEach(admin => {
+                    const date = admin.added_at ? new Date(admin.added_at).toLocaleString() : 'Legacy';
+                    body.innerHTML += `
+                        <tr class="row-item">
+                            <td><span class="badge gold">${admin.user_id}</span></td>
+                            <td>${date}</td>
+                            <td>
+                                <button class="btn sm" style="background: rgba(218, 54, 51, 0.1); color: var(--danger);" 
+                                        onclick="manageAdmin('remove', '${admin.user_id}')">
+                                    <i class="fa-solid fa-trash"></i> Remove
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+    }
+
+    function unmuteUser(userId) {
+        const guildId = document.getElementById('global-guild-id').value;
+        showModal({
+            title: 'Unmute User',
+            message: `Are you sure you want to unmute user ${userId}?`,
+            confirmText: 'Unmute',
+            type: 'info',
+            onConfirm: () => {
+                fetch('/api/unmute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, guild_id: guildId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', 'Unmute request queued. Bot will process it shortly.');
+                        setTimeout(loadMutes, 1500);
+                    } else {
+                        showToast('error', 'Error: ' + data.error);
+                    }
+                }).catch(() => showToast('error', 'Network error.'));
+            }
+        });
+    }
+
+    function manageAdmin(action, userId) {
+        const guildId = document.getElementById('global-guild-id').value;
+        const targetId = userId || document.getElementById('new-admin-id').value;
+
+        if (!targetId) { showToast('warning', 'Please enter a Discord User ID.'); return; }
+
+        const doAction = () => {
+            fetch('/api/manage_admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: targetId, action: action, guild_id: guildId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('success', `Bot Admin ${action === 'add' ? 'added' : 'removed'} successfully!`);
+                    if (action === 'add') document.getElementById('new-admin-id').value = '';
+                    setTimeout(loadAdmins, 1200);
+                } else {
+                    showToast('error', 'Error: ' + data.error);
+                }
+            }).catch(() => showToast('error', 'Network error.'));
+        };
+
+        if (action === 'remove') {
+            showModal({ title: 'Remove Admin', message: `Remove ${targetId} from Bot Admins?`, confirmText: 'Remove', type: 'danger', onConfirm: doAction });
+        } else {
+            doAction();
+        }
+    }
+
+    function loadBlacklist() {
+        const guildId = document.getElementById('global-guild-id').value;
+        fetch(`/api/blacklist/${guildId}`)
+            .then(r => r.json())
+            .then(data => {
+                const body = document.getElementById('blacklist-table-body');
+                const empty = document.getElementById('blacklist-empty');
+                body.innerHTML = '';
+
+                if (data.length === 0) {
+                    empty.classList.remove('hidden');
+                } else {
+                    empty.classList.add('hidden');
+                    data.forEach(item => {
+                        const date = new Date(item.banned_at).toLocaleString();
+                        body.innerHTML += `
+                            <tr class="row-item">
+                                <td>
+                                    <div style="font-weight: 600;">${item.user_name || 'Unknown'}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">${item.user_id}</div>
+                                </td>
+                                <td>${item.reason || 'No reason'}</td>
+                                <td>${date}</td>
+                                <td>
+                                    <button class="btn sm" style="background: rgba(88, 166, 255, 0.1); color: var(--accent-blue);" 
+                                            onclick="removeFromBlacklist('${item.user_id}')">
+                                        <i class="fa-solid fa-user-plus"></i> Un-Blacklist
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+    }
+
+    function removeFromBlacklist(userId) {
+        const guildId = document.getElementById('global-guild-id').value;
+        showModal({
+            title: 'Un-Blacklist User',
+            message: `Remove user ${userId} from the blacklist? They will be able to rejoin the server.`,
+            confirmText: 'Un-Blacklist',
+            type: 'danger',
+            onConfirm: () => {
+                fetch('/api/manage_blacklist', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, action: 'remove', guild_id: guildId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', 'User removed from blacklist. Bot will sync shortly.');
+                        setTimeout(loadBlacklist, 1500);
+                    } else {
+                        showToast('error', 'Error: ' + data.error);
+                    }
+                }).catch(() => showToast('error', 'Network error.'));
+            }
+        });
+    }
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadMutes();
+    });
+</script>
+
+<style>
+    .tab-content {
+        animation: fadeIn 0.5s ease;
+    }
+</style>
+{% endblock %}

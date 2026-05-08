@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EXCODE Sentinel Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="background-animation"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="container">
+        <!-- ====== SIDEBAR ====== -->
+        <nav class="sidebar glass">
+            <div>
+                <div class="logo">
+                    <span>SENTINEL</span>
+                </div>
+
+                <ul class="nav-links">
+                    <li class="nav-label">Overview</li>
+                    <li class="{% if request.path == '/' %}active{% endif %}">
+                        <a href="/"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-label">Management</li>
+                    <li class="{% if request.path == '/settings' %}active{% endif %}">
+                        <a href="/settings"><i class="fa-solid fa-sliders"></i> Settings</a>
+                    </li>
+                    <li class="{% if request.path == '/broadcast' %}active{% endif %}">
+                        <a href="/broadcast"><i class="fa-solid fa-bullhorn"></i> Broadcast</a>
+                    </li>
+                    <li class="{% if request.path == '/tickets' %}active{% endif %}">
+                        <a href="/tickets"><i class="fa-solid fa-ticket"></i> Tickets</a>
+                    </li>
+                    <li class="nav-label">Security</li>
+                    <li class="{% if request.path == '/moderation' %}active{% endif %}">
+                        <a href="/moderation"><i class="fa-solid fa-shield-halved"></i> Moderation</a>
+                    </li>
+                    <li class="{% if request.path == '/logs' %}active{% endif %}">
+                        <a href="/logs"><i class="fa-solid fa-list-ul"></i> Audit Logs</a>
+                    </li>
+                    <li class="nav-label">Admin</li>
+                    <li class="{% if request.path == '/control' %}active{% endif %}">
+                        <a href="/control"><i class="fa-solid fa-gamepad"></i> Control Panel</a>
+                    </li>
+                    <li class="{% if request.path == '/ai_supervisor' %}active{% endif %}">
+                        <a href="/ai_supervisor"><i class="fa-solid fa-brain"></i> AI Supervisor</a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- User profile / logout -->
+            <a href="/logout" class="user-profile" title="Click to logout">
+                <div class="avatar"><i class="fa-solid fa-user"></i></div>
+                <div class="user-info">
+                    <div class="name">{{ current_user.username if current_user.is_authenticated else 'Admin' }}</div>
+                    <div class="role">Administrator</div>
+                </div>
+                <i class="fa-solid fa-right-from-bracket logout-btn"></i>
+            </a>
+        </nav>
+
+        <!-- ====== MAIN CONTENT ====== -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- ====== TOAST CONTAINER ====== -->
+    <div id="toast-container"></div>
+
+    <!-- ====== CUSTOM MODAL ====== -->
+    <div id="modal-overlay">
+        <div class="modal-box glass">
+            <div class="modal-icon"><i class="fa-solid fa-circle-question"></i></div>
+            <h2 id="modal-title">Confirm Action</h2>
+            <p id="modal-message">Are you sure you want to proceed?</p>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeModal()" style="background:rgba(255,255,255,0.07);color:var(--text-primary);">Cancel</button>
+                <button class="btn primary" id="modal-confirm-btn" onclick="confirmModal()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GLOBAL JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+
+</html>

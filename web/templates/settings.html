@@ -1,0 +1,217 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1><i class="fa-solid fa-sliders"></i> Server Settings</h1>
+        <p>Configure your bot behavior. Enter your <b>Guild ID</b> to load settings.</p>
+    </div>
+</div>
+
+<!-- Guild Loader -->
+<div class="loader-box glass fade-in">
+    <input type="text" id="guild-id-input" placeholder="Enter Guild ID to Load..." class="input-field" style="margin-bottom:0;" data-smart-id="guild" onkeydown="if(event.key==='Enter')loadSettings()">
+    <button class="btn primary" onclick="loadSettings()"><i class="fa-solid fa-download"></i> Load Settings</button>
+</div>
+
+<div id="settings-container" class="hidden">
+    <!-- Tabs Nav -->
+    <div class="tabs-nav glass fade-in">
+        <button class="tab-btn active" onclick="switchTab('general')"><i class="fa-solid fa-layer-group"></i> General</button>
+        <button class="tab-btn" onclick="switchTab('moderation')"><i class="fa-solid fa-gavel"></i> Moderation</button>
+        <button class="tab-btn" onclick="switchTab('roles')"><i class="fa-solid fa-user-shield"></i> Roles</button>
+        <button class="tab-btn" onclick="switchTab('portal')"><i class="fa-solid fa-user-gear"></i> Portal</button>
+    </div>
+
+    <!-- Tab: General -->
+    <div id="tab-general" class="tab-content">
+        <div class="settings-grid">
+            <div class="card glass slide-up" style="--delay:0.1s; flex-direction:column; align-items:flex-start;">
+                <div class="card-header">
+                    <h3><i class="fa-solid fa-door-open"></i> Welcome System</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Welcome Channel ID</label>
+                        <input type="text" id="welcome_channel" class="input-field" placeholder="123456789...">
+                        <button class="btn sm" onclick="save('welcome_channel')">Save</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Welcome Message</label>
+                        <textarea id="welcome_message" rows="3" class="input-field" placeholder="Welcome {mention} to {server}..."></textarea>
+                        <button class="btn sm" onclick="save('welcome_message')">Save</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Welcome DM Message</label>
+                        <textarea id="welcome_dm" rows="3" class="input-field" placeholder="DM Content..."></textarea>
+                        <button class="btn sm" onclick="save('welcome_dm')">Save</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card glass slide-up" style="--delay:0.2s; flex-direction:column; align-items:flex-start;">
+                <div class="card-header">
+                    <h3><i class="fa-solid fa-book"></i> Rules Channel</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Rules Channel ID</label>
+                        <input type="text" id="rules_channel" class="input-field" placeholder="123456789...">
+                        <button class="btn sm" onclick="save('rules_channel')">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Moderation -->
+    <div id="tab-moderation" class="tab-content hidden">
+        <div class="settings-grid">
+            <div class="card glass slide-up" style="--delay:0.1s; flex-direction:column; align-items:flex-start;">
+                <div class="card-header">
+                    <h3><i class="fa-solid fa-clipboard-list"></i> Logging</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Logs Channel ID</label>
+                        <input type="text" id="logs_channel" class="input-field" placeholder="123456789...">
+                        <button class="btn sm" onclick="save('logs_channel')">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Roles -->
+    <div id="tab-roles" class="tab-content hidden">
+        <div class="settings-grid">
+            <div class="card glass slide-up" style="--delay:0.1s; flex-direction:column; align-items:flex-start;">
+                <div class="card-header">
+                    <h3><i class="fa-solid fa-id-badge"></i> Auto Role</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Auto Role Name (given on join)</label>
+                        <input type="text" id="auto_role" class="input-field" placeholder="Member">
+                        <button class="btn sm" onclick="save('auto_role')">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Portal (Admin Credentials) -->
+    <div id="tab-portal" class="tab-content hidden">
+        <div class="settings-grid">
+            <div class="card glass slide-up" style="--delay:0.1s; flex-direction:column; align-items:flex-start;">
+                <div class="card-header">
+                    <h3><i class="fa-solid fa-key"></i> Web Portal Credentials</h3>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted" style="font-size:0.88rem; margin-bottom:1.25rem;">
+                        Change the login credentials for this admin dashboard. You will be logged out after saving.
+                    </p>
+                    <div class="form-group">
+                        <label>New Username</label>
+                        <input type="text" id="new_web_username" class="input-field" placeholder="New admin username" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="new_web_password" class="input-field" placeholder="New secure password" autocomplete="new-password">
+                    </div>
+                    <button class="btn danger" onclick="confirmChangeCredentials()">
+                        <i class="fa-solid fa-lock"></i> Update Credentials
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentGuildId = '';
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(tabName)) btn.classList.add('active');
+        });
+    }
+
+    function loadSettings() {
+        const gid = document.getElementById('guild-id-input').value.trim();
+        if (!gid) { showToast('warning', 'Please enter a Guild ID.'); return; }
+        currentGuildId = gid;
+
+        fetch(`/api/get_settings/${gid}`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('settings-container').classList.remove('hidden');
+                SmartIdInput.saveId('guild', gid);
+                const fields = ['welcome_channel','welcome_message','welcome_dm','auto_role','logs_channel','rules_channel'];
+                fields.forEach(f => { if (data[f] !== undefined) document.getElementById(f).value = data[f]; });
+                showToast('success', `Settings loaded for guild <b>${gid}</b>.`);
+            })
+            .catch(() => showToast('error', 'Error loading settings. Is the bot running?'));
+    }
+
+    function save(key) {
+        if (!currentGuildId) { showToast('warning', 'No guild loaded. Please load first.'); return; }
+        const value = document.getElementById(key).value;
+        const btn   = document.querySelector(`button[onclick="save('${key}')"]`);
+
+        fetch('/api/save_setting', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guild_id: currentGuildId, key, value })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('success', `<b>${key.replace(/_/g,' ')}</b> saved successfully.`);
+                if (btn) {
+                    const orig = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
+                    btn.style.background = 'var(--success)';
+                    setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 2500);
+                }
+            } else {
+                showToast('error', `Failed to save: ${data.error || 'Unknown error.'}`);
+            }
+        })
+        .catch(() => showToast('error', 'Network error. Could not save setting.'));
+    }
+
+    function confirmChangeCredentials() {
+        const username = document.getElementById('new_web_username').value.trim();
+        const password = document.getElementById('new_web_password').value;
+        if (!username || !password) { showToast('warning', 'Please fill in both username and password.'); return; }
+
+        showModal({
+            title: 'Update Portal Credentials',
+            message: 'You will be logged out immediately. Make sure you remember the new credentials!',
+            confirmText: 'Update & Logout',
+            type: 'danger',
+            onConfirm: () => {
+                fetch('/api/change_credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', 'Credentials updated! Redirecting to login...');
+                        setTimeout(() => window.location.href = '/logout', 2000);
+                    } else {
+                        showToast('error', `Failed: ${data.error || 'Unknown error.'}`);
+                    }
+                })
+                .catch(() => showToast('error', 'Network error.'));
+            }
+        });
+    }
+</script>
+{% endblock %}

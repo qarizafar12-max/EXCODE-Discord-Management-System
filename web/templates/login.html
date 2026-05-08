@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | EXCODE Sentinel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0d1117;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        .login-card {
+            width: 400px;
+            padding: 3rem;
+            text-align: center;
+            z-index: 10;
+            position: relative;
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        .login-card .logo {
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .login-card .logo i {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, var(--accent-blue), var(--accent-purple));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .login-card .logo h2 {
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .flash-messages {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 1.5rem;
+            color: var(--danger);
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            text-align: left;
+        }
+
+        .input-wrapper {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            transition: color 0.3s;
+        }
+
+        .input-field {
+            padding-left: 3rem;
+        }
+
+        .input-field:focus+i {
+            color: var(--accent-blue);
+        }
+
+        .btn.login-btn {
+            width: 100%;
+            margin-top: 1rem;
+            background: linear-gradient(45deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(88, 166, 255, 0.3);
+        }
+
+        .btn.login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(88, 166, 255, 0.4);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-animation"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div id="canvas-container">
+        <canvas id="neural-canvas"></canvas>
+    </div>
+
+    <div class="login-card glass">
+        <div class="logo">
+            <i class="fa-solid fa-shield-halved"></i>
+            <h2>SENTINEL</h2>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul class="flash-messages">
+            {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+
+        <form id="login-form">
+            <div class="input-wrapper">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" name="username" id="username" class="input-field" placeholder="Username" required
+                    autocomplete="off">
+            </div>
+            <div class="input-wrapper">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" name="password" id="password" class="input-field" placeholder="Password"
+                    required>
+            </div>
+            <button type="submit" class="btn login-btn">Enter Portal</button>
+        </form>
+    </div>
+
+    <!-- Portal Loading Overlay -->
+    <div id="portal-loader" class="hidden">
+        <div class="portal-ring"></div>
+        <div class="portal-content">
+            <i class="fa-solid fa-microchip pulse"></i>
+            <h2 id="loader-text">Initializing Portal...</h2>
+            <div class="progress-bar-wrapper">
+                <div id="loader-progress" class="progress-bar"></div>
+            </div>
+        </div>
+        <div id="portal-flare"></div>
+    </div>
+
+    <style>
+        #portal-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            background: radial-gradient(circle, #1a1f2e 0%, #0d1117 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+
+        #portal-loader.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .portal-ring {
+            width: 300px;
+            height: 300px;
+            border: 2px solid transparent;
+            border-top: 2px solid var(--accent-blue);
+            border-right: 2px solid var(--accent-purple);
+            border-radius: 50%;
+            position: absolute;
+            animation: spin 2s linear infinite;
+            filter: drop-shadow(0 0 15px var(--accent-blue));
+        }
+
+        .portal-ring::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 10px;
+            border: 2px solid transparent;
+            border-bottom: 2px solid var(--accent-purple);
+            border-left: 2px solid var(--accent-blue);
+            border-radius: 50%;
+            animation: spin-reverse 1.5s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes spin-reverse {
+            0% {
+                transform: rotate(360deg);
+            }
+
+            100% {
+                transform: rotate(0deg);
+            }
+        }
+
+        .portal-content {
+            text-align: center;
+            z-index: 10;
+        }
+
+        .portal-content i {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(45deg, var(--accent-blue), var(--accent-purple));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(88, 166, 255, 0.5));
+        }
+
+        .portal-content h2 {
+            font-weight: 300;
+            letter-spacing: 4px;
+            color: #fff;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+        }
+
+        .progress-bar-wrapper {
+            width: 250px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            box-shadow: 0 0 10px var(--accent-blue);
+        }
+
+        .pulse {
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 10px rgba(88, 166, 255, 0.5));
+                transform: scale(1);
+            }
+
+            50% {
+                filter: drop-shadow(0 0 25px rgba(187, 128, 255, 0.8));
+                transform: scale(1.1);
+            }
+        }
+
+        #portal-flare {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            z-index: 1001;
+            box-shadow: 0 0 100px 50px white;
+        }
+    </style>
+
+    <script>
+        // Form & Animation Logic
+        const loginForm = document.getElementById('login-form');
+        const loader = document.getElementById('portal-loader');
+        const loaderText = document.getElementById('loader-text');
+        const loaderProgress = document.getElementById('loader-progress');
+        const portalFlare = document.getElementById('portal-flare');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            // 1. Fade out card
+            gsap.to('.login-card', {
+                opacity: 0,
+                y: -20,
+                duration: 0.5,
+                onComplete: () => {
+                    // 2. Show loader
+                    loader.classList.remove('hidden');
+                    loader.classList.add('visible');
+
+                    // 3. Play initialization animation
+                    playPortalSequence();
+                }
+            });
+        });
+
+        function playPortalSequence() {
+            const tl = gsap.timeline();
+
+            // Phase 1: Authentication Simulation
+            tl.to(loaderProgress, {
+                width: '100%',
+                duration: 1.5,
+                ease: 'power2.inOut',
+                onStart: () => { loaderText.innerText = "AUTHENTICATING STAFF..."; }
+            });
+
+            tl.add(() => {
+                // Submit via AJAX
+                const formData = new FormData(loginForm);
+                fetch('/login', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(r => {
+                        if (r.redirected) {
+                            // Success! Continue animation
+                            loaderText.innerText = "VERIFIED. INITIALIZING PORTAL...";
+
+                            // Phase 2: Success Animation
+                            const successTl = gsap.timeline();
+                            successTl.to('.portal-ring', {
+                                scale: 2,
+                                opacity: 0,
+                                duration: 0.8,
+                                ease: 'power4.in'
+                            });
+                            successTl.to(portalFlare, {
+                                opacity: 1,
+                                scale: 100,
+                                duration: 1.2,
+                                ease: 'power2.in',
+                                onComplete: () => {
+                                    window.location.href = r.url;
+                                }
+                            }, "-=0.2");
+                        } else {
+                            // Failure - return to form
+                            loaderText.innerText = "ACCESS REJECTED.";
+                            gsap.to(loader, {
+                                opacity: 0,
+                                duration: 0.5,
+                                delay: 1,
+                                onComplete: () => {
+                                    loader.classList.remove('visible');
+                                    loader.classList.add('hidden');
+                                    loaderProgress.style.width = '0%';
+                                    gsap.to('.login-card', { opacity: 1, y: 0, duration: 0.5 });
+                                    alert("Invalid username or password");
+                                }
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert("Connection error. Portal offline.");
+                    });
+            });
+        }
+
+        // Neural Starfield Animation
+        const canvas = document.getElementById('neural-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        const particleCount = 100;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor() {
+                this.init();
+            }
+
+            init() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.radius = Math.random() * 2 + 1;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(88, 166, 255, 0.5)';
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach((p, i) => {
+                p.update();
+                p.draw();
+
+                for (let j = i + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p.x - p2.x;
+                    const dy = p.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 150) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(88, 166, 255, ${0.2 * (1 - dist / 150)})`;
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // GSAP entry animation
+        window.addEventListener('load', () => {
+            const tl = gsap.timeline();
+
+            // Re-style card initial state for GSAP
+            gsap.set('.login-card', { opacity: 0, y: 50, scale: 0.95 });
+            gsap.set('.logo', { opacity: 0, y: -20 });
+            gsap.set('.input-wrapper', { opacity: 0, x: -30 });
+            gsap.set('.login-btn', { opacity: 0, y: 20, scale: 0.9 });
+
+            tl.to('.login-card', {
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                duration: 1.0,
+                ease: 'power4.out',
+                delay: 0.2
+            });
+
+            tl.to('.logo', {
+                opacity: 1,
+                y: 0,
+                duration: 0.8,
+                ease: 'power3.out'
+            }, "-=0.6");
+
+            tl.to('.input-wrapper', {
+                opacity: 1,
+                x: 0,
+                stagger: 0.15,
+                duration: 0.8,
+                ease: 'power3.out'
+            }, "-=0.5");
+
+            tl.to('.login-btn', {
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                duration: 0.6,
+                ease: 'back.out(1.7)'
+            }, "-=0.4");
+        });
+    </script>
+</body>
+
+</html>

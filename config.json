@@ -1,0 +1,88 @@
+{
+  "bot_token": "",
+  "gemini_api_key": "",
+  "openrouter_api_key": "",
+  "admin_ids": [
+    1354815326226874371
+  ],
+  "server_configs": {
+    "1461269221475618909": {
+      "channels": {
+        "welcome": 1461269355286233088
+      }
+    }
+  },
+  "guild_id": null,
+  "channels": {
+    "welcome": 1381256806935953460,
+    "rules": null,
+    "logs": null
+  },
+  "auto_role": "Member",
+  "welcome_message": "🎉 **Welcome to {server}, {mention}!**\n\nWe are delighted to have you join our community of developers and learners.\n\n**You are our {count}th member!** 🚀\n\n**Getting Started:**\n• 📜 **Read the Rules:** Please familiarize yourself with our guidelines.\n• 💬 **Introduce Yourself:** Say hello in the general chat!\n• 📂 **Share Projects:** Show us what you're working on.\n\nWe hope you have a productive and enjoyable time here. Happy coding! 💻",
+  "rules_dm": "**👋 Welcome to EXCODE!**\n\nTo ensure a positive experience for everyone, please adhere to the following community guidelines:\n\n**1️⃣ Be Respectful**\nTreat all members with courtesy and respect. Harassment or discrimination of any kind is not tolerated.\n\n**2️⃣ No Spam or Self-Promotion**\nAvoid excessive messaging and unauthorized advertising. Share content in the appropriate channels.\n\n**3️⃣ Professional Language**\nKeep conversations clean. Toxic behavior, hate speech, and excessive profanity are strictly prohibited.\n\n**4️⃣ Stay On Topic**\nEnsure your potential discussions are relevant to the channel's purpose.\n\n**5️⃣ Follow Discord TOS**\nRespect Discord's Terms of Service and Community Guidelines.\n\nViolations may result in warnings, mutes, or bans depending on severity.\n\nThank you for helping us maintain a great community! 🌟",
+  "moderation": {
+    "spam_threshold": 5,
+    "spam_interval": 10,
+    "caps_threshold": 0.7,
+    "warnings_before_mute": 3,
+    "toxic_words": [
+      "idiot",
+      "stupid",
+      "dumb",
+      "moron",
+      "retard",
+      "shut up",
+      "stfu",
+      "gtfo",
+      "trash",
+      "garbage",
+      "noob",
+      "bastard",
+      "whore",
+      "hoe",
+      "slut",
+      "cunt",
+      "nigger",
+      "faggot",
+      "dyke",
+      "tranny",
+      "nigga",
+      "kill yourself",
+      "kys",
+      "die"
+    ]
+  },
+  "moderation_responses": {
+    "warning": "⚠️ **Warning Issued**\n\n{mention}, this is a formal warning regarding your recent behavior.\n\n**Reason:** {reason}\n**Warning Count:** {count}/3\n\nPlease review the server rules. Further violations may result in a mute or ban.",
+    "mute": "🔇 **User Muted**\n\n{mention} has been temporarily muted.\n\n**Reason:** {reason}\n**Duration:** {duration}",
+    "kick": "👢 **User Kicked**\n\n{mention} has been kicked from the server.\n\n**Reason:** {reason}",
+    "ban": "🔨 **User Banned**\n\n{mention} has been banned from the server.\n\n**Reason:** {reason}",
+    "spam_warning": "🚫 **Anti-Spam Alert**\n\n{mention}, please stop spamming. We appreciate your enthusiasm, but let's keep the chat clean for everyone.",
+    "toxic_warning": "🛡️ **Conduct Alert**\n\n{mention}, your message contained inappropriate language. We maintain a professional environment here. Please watch your language."
+  },
+  "antiraid": {
+    "enabled": false,
+    "join_threshold": 5,
+    "join_interval": 60,
+    "new_account_days": 7
+  },
+  "ai": {
+    "enabled": true,
+    "sentiment_threshold": -0.8,
+    "risk_threshold": "MEDIUM"
+  },
+  "suggestions": {
+    "channel_id": null,
+    "auto_thread": true
+  },
+  "polls": {
+    "style": "bar"
+  },
+  "tickets": {
+    "channel_id": 1461270207409688629,
+    "category_id": null,
+    "support_role": "Moderator",
+    "transcript_channel": null
+  }
+}

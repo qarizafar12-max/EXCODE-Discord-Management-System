@@ -1,0 +1,97 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="dashboard-header fade-in">
+    <h1><i class="fa-solid fa-gamepad"></i> Bot Control Panel</h1>
+    <p>Manage bot lifecycle and system commands directly.</p>
+</div>
+
+<div class="stats-grid">
+    <div class="card glass slide-up stagger-1">
+        <div class="icon-box blue"><i class="fa-solid fa-sync"></i></div>
+        <div class="card-info">
+            <h3>Sync Commands</h3>
+            <p style="font-size:0.9rem; color:#888;">Update slash commands globally</p>
+            <button class="btn sm" style="margin-top:0.5rem;" onclick="sendControlAction('sync_tree')">Sync Now</button>
+        </div>
+    </div>
+
+    <div class="card glass slide-up stagger-2">
+        <div class="icon-box purple"><i class="fa-solid fa-rotate"></i></div>
+        <div class="card-info">
+            <h3>Reload Cogs</h3>
+            <p style="font-size:0.9rem; color:#888;">Reload extension modules</p>
+            <button class="btn sm" style="margin-top:0.5rem;" onclick="sendControlAction('reload_cogs')">Reload</button>
+        </div>
+    </div>
+
+    <div class="card glass slide-up stagger-3">
+        <div class="icon-box green"><i class="fa-solid fa-power-off"></i></div>
+        <div class="card-info">
+            <h3>Restart Bot</h3>
+            <p style="font-size:0.9rem; color:#888;">Restart the bot process</p>
+            <button class="btn sm" style="margin-top:0.5rem;"
+                onclick="confirmAction('restart_bot', 'Restart the bot?')">Restart</button>
+        </div>
+    </div>
+
+    <div class="card glass slide-up stagger-4" style="border-color: var(--danger);">
+        <div class="icon-box" style="background: rgba(218, 54, 51, 0.2); color: var(--danger);"><i
+                class="fa-solid fa-skull"></i></div>
+        <div class="card-info">
+            <h3>Shutdown</h3>
+            <p style="font-size:0.9rem; color:#888;">Turn off the bot completely</p>
+            <button class="btn sm" style="margin-top:0.5rem; background: var(--danger);"
+                onclick="confirmAction('shutdown_bot', 'Are you sure you want to SHUTDOWN the bot?')">Shutdown</button>
+        </div>
+    </div>
+</div>
+
+<div class="glass fade-in" style="margin-top: 2rem; padding: 2rem; animation-delay: 0.5s;">
+    <h3><i class="fa-solid fa-terminal"></i> Console Output / Status</h3>
+    <div id="status-log"
+        style="background: #000; padding: 1rem; border-radius: 8px; font-family: monospace; margin-top: 1rem; height: 150px; overflow-y: auto; color: #0f0;">
+        > Ready...
+    </div>
+</div>
+
+<script>
+    function log(msg) {
+        const box = document.getElementById('status-log');
+        const time = new Date().toLocaleTimeString();
+        box.innerHTML += `<div>[${time}] ${msg}</div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function confirmAction(action, text) {
+        if (confirm(text)) {
+            sendControlAction(action);
+        }
+    }
+
+    function sendControlAction(action) {
+        const guildId = prompt("Enter Guild ID for context (optional, or 0 for global):", "0");
+        if (guildId === null) return;
+
+        log(`Executing: ${action}...`);
+
+        fetch('/api/send_action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                guild_id: guildId,
+                action: action
+            })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    log(`[SUCCESS] Action sent to queue.`);
+                } else {
+                    log(`[ERROR] ${data.error}`);
+                }
+            })
+            .catch(e => log(`[FATAL] ${e}`));
+    }
+</script>
+{% endblock %}

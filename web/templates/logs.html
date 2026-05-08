@@ -1,0 +1,117 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1><i class="fa-solid fa-list-ul"></i> Audit Logs</h1>
+        <p>Recent events from all monitored server activities.</p>
+    </div>
+</div>
+
+<div class="loader-box glass fade-in">
+    <input type="text" id="guild-id-input" placeholder="Enter Guild ID to View Logs..." class="input-field" data-smart-id="guild">
+    <button class="btn primary" onclick="loadLogs()">Fetch Logs</button>
+</div>
+
+<div class="glass slide-up" style="--delay: 0.2s; padding: 0;">
+    <table class="logs-table" id="logs-table">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Time</th>
+            </tr>
+        </thead>
+        <tbody id="logs-body">
+            <tr>
+                <td colspan="3" style="text-align: center; padding: 2rem; color: #888;">Enter a Guild ID above to load
+                    logs.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .logs-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .logs-table th {
+        text-align: left;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--text-secondary);
+        font-weight: 600;
+    }
+
+    .logs-table td {
+        padding: 1.2rem 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .logs-table tr:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .badge {
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .bg-blue {
+        background: rgba(88, 166, 255, 0.2);
+        color: var(--accent-blue);
+    }
+
+    .bg-red {
+        background: rgba(218, 54, 51, 0.2);
+        color: var(--danger);
+    }
+
+    .bg-green {
+        background: rgba(63, 185, 80, 0.2);
+        color: var(--accent-green);
+    }
+</style>
+
+<script>
+    function loadLogs() {
+        const gid = document.getElementById('guild-id-input').value;
+        if (!gid) { showToast('warning', 'Please enter a Guild ID.'); return; }
+        SmartIdInput.saveId('guild', gid);
+
+        fetch(`/api/logs/${gid}`)
+            .then(r => r.json())
+            .then(logs => {
+                const tbody = document.getElementById('logs-body');
+                tbody.innerHTML = '';
+
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem;">No logs found.</td></tr>';
+                    return;
+                }
+
+                logs.forEach(log => {
+                    let badgeClass = 'bg-blue';
+                    if (log.event_type.includes('ban') || log.event_type.includes('kick')) badgeClass = 'bg-red';
+                    if (log.event_type.includes('join')) badgeClass = 'bg-green';
+
+                    const d = new Date(log.timestamp);
+
+                    const row = `
+                    <tr class="fade-in">
+                        <td><span class="badge ${badgeClass}">${log.event_type}</span></td>
+                        <td>${log.description}</td>
+                        <td>${d.toLocaleString()}</td>
+                    </tr>
+                `;
+                    tbody.innerHTML += row;
+                });
+            });
+    }
+</script>
+{% endblock %}

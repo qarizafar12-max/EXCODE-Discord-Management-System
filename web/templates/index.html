@@ -1,0 +1,236 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<!-- ====== PAGE HEADER ====== -->
+<div class="page-header fade-in">
+    <div>
+        <h1><i class="fa-solid fa-gauge-high"></i> Command Center</h1>
+        <p>Welcome back, Commander. Sentinel is monitoring your community infrastructure.</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+        <input type="text" id="action-guild-id" class="input-field"
+            style="max-width:220px; margin-bottom:0;"
+            placeholder="Guild ID..."
+            data-smart-id="guild"
+            oninput="onGuildIdChange()">
+        <button class="btn sm" onclick="onGuildIdChange()"><i class="fa-solid fa-rotate"></i> Load</button>
+    </div>
+</div>
+
+<!-- ====== STAT CARDS ====== -->
+<div class="stats-grid">
+    <div class="card glass slide-up" style="--delay:0.05s">
+        <div class="icon-box blue"><i class="fa-solid fa-server float"></i></div>
+        <div class="card-info">
+            <h3>Bot Status</h3>
+            <h2 id="status-text">
+                <span class="skeleton skeleton-h2" id="status-skeleton"></span>
+            </h2>
+        </div>
+    </div>
+
+    <div class="card glass slide-up" style="--delay:0.15s">
+        <div class="icon-box purple"><i class="fa-solid fa-receipt float"></i></div>
+        <div class="card-info">
+            <h3>Total Logs</h3>
+            <h2 id="log-count"><span class="skeleton skeleton-h2"></span></h2>
+        </div>
+    </div>
+
+    <div class="card glass slide-up" style="--delay:0.25s">
+        <div class="icon-box green"><i class="fa-solid fa-ticket float"></i></div>
+        <div class="card-info">
+            <h3>Active Tickets</h3>
+            <h2 id="ticket-count"><span class="skeleton skeleton-h2"></span></h2>
+        </div>
+    </div>
+
+    <div class="card glass slide-up" style="--delay:0.35s">
+        <div class="icon-box purple"><i class="fa-solid fa-shield-halved float"></i></div>
+        <div class="card-info">
+            <h3>Toxic Msgs Stopped</h3>
+            <h2 id="ai-toxic-count">—</h2>
+        </div>
+    </div>
+
+    <div class="card glass slide-up" style="--delay:0.45s">
+        <div class="icon-box gold"><i class="fa-solid fa-user-lock float"></i></div>
+        <div class="card-info">
+            <h3>Active AI Mutes</h3>
+            <h2 id="ai-mute-count">—</h2>
+        </div>
+    </div>
+</div>
+
+<!-- ====== QUICK ACTIONS ====== -->
+<div class="section-header slide-up" style="--delay:0.5s">
+    <div>
+        <h2><i class="fa-solid fa-bolt"></i> Quick Actions</h2>
+        <p>Server-wide controls. Make sure your Guild ID is entered above.</p>
+    </div>
+</div>
+
+<div class="actions-grid">
+    <a href="/settings" class="action-card glass slide-up" style="--delay:0.55s">
+        <i class="fa-solid fa-gear"></i>
+        <span>Configure Settings</span>
+    </a>
+    <div class="action-card glass slide-up" style="--delay:0.6s" onclick="confirmLockdown()">
+        <i class="fa-solid fa-lock" style="color:var(--warning);"></i>
+        <span>Lockdown Server</span>
+    </div>
+    <div class="action-card glass slide-up" style="--delay:0.65s" onclick="confirmUnlock()">
+        <i class="fa-solid fa-lock-open" style="color:var(--accent-green);"></i>
+        <span>Unlock Server</span>
+    </div>
+    <div class="action-card glass slide-up" style="--delay:0.7s" onclick="confirmClearCache()">
+        <i class="fa-solid fa-broom" style="color:var(--accent-blue);"></i>
+        <span>Clear Cache / Sync</span>
+    </div>
+    <a href="/moderation" class="action-card glass slide-up" style="--delay:0.75s">
+        <i class="fa-solid fa-gavel" style="color:var(--danger);"></i>
+        <span>Moderation Panel</span>
+    </a>
+    <a href="/ai_supervisor" class="action-card glass slide-up" style="--delay:0.8s">
+        <i class="fa-solid fa-brain" style="color:var(--accent-purple);"></i>
+        <span>AI Supervisor</span>
+    </a>
+</div>
+
+<!-- ====== AI INTERVENTIONS ====== -->
+<div class="section-header slide-up" style="--delay:0.85s">
+    <div>
+        <h2><i class="fa-solid fa-brain"></i> Recent AI Interventions</h2>
+        <p>Live feed from the NLP and moderation engine.</p>
+    </div>
+    <span id="ai-feed-status" class="badge blue"><i class="fa-solid fa-circle" style="font-size:0.5rem;"></i> Waiting for Guild ID</span>
+</div>
+
+<div class="glass slide-up" style="--delay:0.9s; padding:1.5rem;">
+    <div id="ai-interventions" style="max-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:0.6rem;">
+        <p class="text-muted" style="font-size:0.9rem; padding:0.5rem 0;">Enter your Guild ID above to load the AI activity feed.</p>
+    </div>
+</div>
+
+<script>
+    let _currentGuildId = '';
+
+    // ---- Load bot stats on page load ----
+    fetch('/api/stats')
+        .then(r => r.json())
+        .then(data => {
+            const statusEl = document.getElementById('status-text');
+            statusEl.innerHTML = `${data.status || 'Online'} <span class="dot pulse"></span>`;
+            const logEl = document.getElementById('log-count');
+            logEl.innerHTML = '';
+            animateCount(logEl, data.log_count || 0);
+            const tkEl = document.getElementById('ticket-count');
+            tkEl.innerHTML = '';
+            animateCount(tkEl, data.ticket_count || 0);
+        })
+        .catch(() => {
+            document.getElementById('status-text').innerHTML = 'Offline <span class="dot pulse" style="background:var(--danger); box-shadow:0 0 10px var(--danger);"></span>';
+            document.getElementById('log-count').innerText = 'N/A';
+            document.getElementById('ticket-count').innerText = 'N/A';
+        });
+
+    // ---- Guild ID change handler ----
+    function onGuildIdChange() {
+        const gid = document.getElementById('action-guild-id').value.trim();
+        _currentGuildId = gid;
+        if (gid) {
+            SmartIdInput.saveId('guild', gid);
+            loadSupervisorStats();
+        }
+    }
+
+    // ---- Load AI Supervisor Stats ----
+    function loadSupervisorStats() {
+        if (!_currentGuildId) return;
+        fetch(`/api/supervisor_stats/${_currentGuildId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) return;
+
+                const toxicEl = document.getElementById('ai-toxic-count');
+                const muteEl  = document.getElementById('ai-mute-count');
+                animateCount(toxicEl, data.toxic_caught  || 0);
+                animateCount(muteEl,  data.active_mutes  || 0);
+
+                const feed = document.getElementById('ai-interventions');
+                feed.innerHTML = '';
+
+                const feedStatus = document.getElementById('ai-feed-status');
+
+                if (data.recent_interventions && data.recent_interventions.length > 0) {
+                    feedStatus.className = 'badge green';
+                    feedStatus.innerHTML = '<i class="fa-solid fa-circle" style="font-size:0.5rem;"></i> Live';
+                    data.recent_interventions.forEach(log => {
+                        const isTox = log.event_type && log.event_type.includes('toxicity');
+                        const time  = new Date(log.timestamp).toLocaleString();
+                        const div   = document.createElement('div');
+                        div.style.cssText = `
+                            padding: 0.9rem 1.1rem;
+                            background: rgba(255,255,255,0.03);
+                            border-radius: 10px;
+                            border-left: 3px solid ${isTox ? 'var(--danger)' : 'var(--accent-purple)'};
+                            animation: fadeIn 0.5s ease forwards;
+                        `;
+                        div.innerHTML = `
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.3rem;">
+                                <strong style="font-size:0.88rem;color:${isTox ? 'var(--danger)' : 'var(--accent-purple)'}">
+                                    <i class="fa-solid fa-${isTox ? 'triangle-exclamation' : 'bolt'}"></i>
+                                    ${log.event_type || 'AI Event'}
+                                </strong>
+                                <span style="font-size:0.75rem;color:var(--text-secondary);">${time}</span>
+                            </div>
+                            <span style="font-size:0.88rem;color:var(--text-secondary);">${log.description || ''}</span>
+                        `;
+                        feed.appendChild(div);
+                    });
+                } else {
+                    feedStatus.className = 'badge blue';
+                    feedStatus.innerHTML = '<i class="fa-solid fa-circle" style="font-size:0.5rem;"></i> No Recent Activity';
+                    feed.innerHTML = '<p class="text-muted" style="font-size:0.9rem;padding:0.5rem 0;">No recent AI interventions for this guild.</p>';
+                }
+            });
+    }
+
+    // Poll every 7 seconds
+    setInterval(() => { if (_currentGuildId) loadSupervisorStats(); }, 7000);
+
+    // ---- Quick Action Modals ----
+    function confirmLockdown() {
+        if (!_currentGuildId) { showToast('warning', 'Please enter a Guild ID first.'); return; }
+        showModal({
+            title: 'Lockdown Server',
+            message: 'This will restrict all channel permissions for regular members. Are you sure?',
+            confirmText: 'Yes, Lockdown',
+            type: 'danger',
+            onConfirm: () => sendAction('lockdown', _currentGuildId)
+        });
+    }
+
+    function confirmUnlock() {
+        if (!_currentGuildId) { showToast('warning', 'Please enter a Guild ID first.'); return; }
+        showModal({
+            title: 'Unlock Server',
+            message: 'This will restore channel permissions for all members.',
+            confirmText: 'Yes, Unlock',
+            type: 'info',
+            onConfirm: () => sendAction('unlock', _currentGuildId)
+        });
+    }
+
+    function confirmClearCache() {
+        if (!_currentGuildId) { showToast('warning', 'Please enter a Guild ID first.'); return; }
+        showModal({
+            title: 'Clear Cache & Sync',
+            message: 'This will clear the bot\'s internal cache and re-sync all data.',
+            confirmText: 'Clear & Sync',
+            type: 'info',
+            onConfirm: () => sendAction('clear_cache', _currentGuildId)
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,374 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<!-- ====== PAGE HEADER ====== -->
+<div class="page-header fade-in">
+    <div>
+        <h1><i class="fa-solid fa-brain"></i> Sentinel Intelligence Layer</h1>
+        <p>Real-time telemetry and classification metrics from the Neural Pulse engine.</p>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+        <input type="text" id="guild-id-input" class="input-field"
+            style="max-width:220px; margin-bottom:0;"
+            placeholder="Guild ID..."
+            data-smart-id="guild"
+            onkeydown="if(event.key==='Enter') loadSupervisorData()">
+        <button class="btn primary" onclick="loadSupervisorData()">
+            <i class="fa-solid fa-rotate"></i> Load
+        </button>
+    </div>
+</div>
+
+<!-- ====== AI STATUS INDICATOR ====== -->
+<div class="glass fade-in" id="ai-status-bar"
+    style="padding:1rem 1.5rem; margin-bottom:2rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+    <div style="display:flex; align-items:center; gap:1.25rem;">
+        <div id="ai-engine-icon" style="font-size:2rem; filter:drop-shadow(0 0 10px rgba(188,140,255,0.7));">
+            <i class="fa-solid fa-microchip" style="color:var(--accent-purple);"></i>
+        </div>
+        <div>
+            <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-secondary); font-weight:700;">Classification Core</div>
+            <div style="font-size:1.1rem; font-weight:700;" id="engine-status-text">Neural Pulse Classification (VADER)</div>
+        </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.75rem;" id="ai-toggle-row">
+        <span style="font-size:0.9rem; color:var(--text-secondary);">Supervisor Enabled:</span>
+        <label class="ai-toggle" title="Enable / Disable AI Supervisor">
+            <input type="checkbox" id="ai-enabled-toggle" onchange="saveToggle()" checked>
+            <span class="ai-toggle-track">
+                <span class="ai-toggle-thumb"></span>
+            </span>
+        </label>
+        <span id="ai-toggle-label" class="badge green"><i class="fa-solid fa-circle" style="font-size:0.45rem;"></i> Active</span>
+    </div>
+</div>
+
+<!-- ====== STAT CARDS ====== -->
+<div class="stats-grid" style="margin-bottom:2rem;">
+    <div class="card glass slide-up" style="--delay:0.05s">
+        <div class="icon-box red"><i class="fa-solid fa-shield-virus float"></i></div>
+        <div class="card-info">
+            <h3>Toxic Messages Blocked</h3>
+            <h2 id="toxic-caught">—</h2>
+        </div>
+    </div>
+
+    <div class="card glass slide-up" style="--delay:0.15s">
+        <div class="icon-box gold"><i class="fa-solid fa-volume-xmark float"></i></div>
+        <div class="card-info">
+            <h3>Active AI Mutes</h3>
+            <h2 id="active-mutes">—</h2>
+        </div>
+    </div>
+
+    <div class="card glass slide-up" style="--delay:0.25s">
+        <div class="icon-box purple"><i class="fa-solid fa-gauge float"></i></div>
+        <div class="card-info">
+            <h3>Sentiment Threshold</h3>
+            <h2 id="threshold-display">—</h2>
+        </div>
+    </div>
+</div>
+
+<!-- ====== MAIN GRID: Feed + Settings ====== -->
+<div style="display:grid; grid-template-columns:1fr 360px; gap:2rem; align-items:start;">
+
+    <!-- Left: Intervention Feed -->
+    <div class="glass slide-up" style="--delay:0.3s; padding:1.75rem;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem;">
+            <h3 style="display:flex; align-items:center; gap:0.6rem; font-size:1rem;">
+                <i class="fa-solid fa-clock-rotate-left" style="color:var(--accent-purple);"></i>
+                Recent AI Interventions
+            </h3>
+            <span id="feed-status" class="badge blue"><i class="fa-solid fa-circle" style="font-size:0.45rem;"></i> Waiting</span>
+        </div>
+
+        <div id="interventions-feed" style="display:flex; flex-direction:column; gap:0.6rem; max-height:480px; overflow-y:auto;">
+            <div style="text-align:center; padding:3rem 1rem; color:var(--text-secondary);">
+                <i class="fa-solid fa-satellite-dish" style="font-size:2.5rem; margin-bottom:1rem; opacity:0.3; display:block;"></i>
+                Enter a Guild ID above to start monitoring.
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Settings Panel -->
+    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+
+        <!-- Sentiment Threshold -->
+        <div class="glass slide-up" style="--delay:0.4s; padding:1.5rem;">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-sliders"></i> Detection Sensitivity</h3>
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1.25rem; line-height:1.6;">
+                Set the VADER compound score threshold. Lower values only catch extremely toxic content.
+                <br><span style="color:var(--accent-blue);">Range: <b>-1.0</b> (harshest) → <b>0.0</b> (neutral)</span>
+            </p>
+
+            <div id="threshold-slider-container" style="margin-bottom:1.25rem;">
+                <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-secondary); margin-bottom:0.4rem;">
+                    <span>-1.0 (Strictest)</span>
+                    <span>0.0 (Permissive)</span>
+                </div>
+                <input type="range" id="sentiment-threshold-range" min="-1.0" max="0.0" step="0.05" value="-0.8"
+                    oninput="syncThreshold(this.value)"
+                    style="width:100%; accent-color:var(--accent-purple); cursor:pointer;">
+                <div style="text-align:center; margin-top:0.6rem;">
+                    <span style="font-size:1.1rem; font-weight:700; color:var(--accent-purple);" id="threshold-value-display">-0.80</span>
+                </div>
+            </div>
+            <input type="hidden" id="sentiment-threshold" value="-0.8">
+            <button class="btn primary" style="width:100%;"
+                onclick="saveSetting('ai_sentiment_threshold', document.getElementById('sentiment-threshold').value)">
+                <i class="fa-solid fa-floppy-disk"></i> Save Threshold
+            </button>
+        </div>
+
+        <!-- Quick Analyze -->
+        <div class="glass slide-up" style="--delay:0.5s; padding:1.5rem;">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-flask"></i> Test Sentiment</h3>
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Paste any text to test the VADER engine live.</p>
+            <textarea id="test-text" rows="4" class="input-field" placeholder="Type a message to analyze..."></textarea>
+            <button class="btn" style="width:100%; margin-top:0.5rem; background:rgba(188,140,255,0.15); color:var(--accent-purple); border:1px solid rgba(188,140,255,0.3);"
+                onclick="analyzeText()">
+                <i class="fa-solid fa-microscope"></i> Analyze Text
+            </button>
+            <div id="test-result" class="hidden" style="margin-top:1rem;">
+                <div id="test-result-box"
+                    style="padding:1rem; border-radius:12px; border-left:4px solid; font-size:0.9rem;"></div>
+            </div>
+        </div>
+
+        <!-- Ticket Sentiment -->
+        <div class="glass slide-up" style="--delay:0.6s; padding:1.5rem;">
+            <div class="card-header">
+                <h3><i class="fa-solid fa-ticket"></i> Ticket Sentiment</h3>
+            </div>
+            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Analyze the sentiment of a support ticket conversation.</p>
+            <div style="display:flex; gap:0.5rem;">
+                <input type="text" id="ticket-channel-id" class="input-field" placeholder="Ticket Channel ID..." style="margin-bottom:0;" data-smart-id="channel">
+                <button class="btn sm" onclick="analyzeTicket()"><i class="fa-solid fa-search"></i></button>
+            </div>
+            <div id="ticket-result" class="hidden" style="margin-top:1rem;">
+                <div id="ticket-result-box"
+                    style="padding:1rem; border-radius:12px; border-left:4px solid; font-size:0.9rem;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== STYLES ====== -->
+<style>
+/* Toggle Switch */
+.ai-toggle { display:inline-flex; align-items:center; cursor:pointer; }
+.ai-toggle input { display:none; }
+.ai-toggle-track {
+    width:46px; height:26px;
+    background:rgba(255,255,255,0.1);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:20px;
+    position:relative;
+    transition:background 0.3s, border-color 0.3s;
+}
+.ai-toggle input:checked + .ai-toggle-track {
+    background:rgba(63,185,80,0.3);
+    border-color:rgba(63,185,80,0.6);
+    box-shadow:0 0 12px rgba(63,185,80,0.4);
+}
+.ai-toggle-thumb {
+    width:20px; height:20px;
+    background:#fff;
+    border-radius:50%;
+    position:absolute;
+    top:2px; left:2px;
+    transition:transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275), background 0.3s;
+    box-shadow:0 2px 6px rgba(0,0,0,0.4);
+}
+.ai-toggle input:checked + .ai-toggle-track .ai-toggle-thumb {
+    transform:translateX(20px);
+    background:var(--accent-green);
+}
+
+/* Intervention item */
+.intervention-item {
+    padding:0.9rem 1.1rem;
+    background:rgba(255,255,255,0.03);
+    border-radius:10px;
+    border-left:3px solid;
+    animation:fadeIn 0.4s ease forwards;
+    transition:background 0.2s;
+}
+.intervention-item:hover { background:rgba(255,255,255,0.06); }
+
+/* Range input */
+input[type="range"] { -webkit-appearance:none; height:6px; border-radius:3px; background:rgba(255,255,255,0.1); outline:none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--accent-purple); cursor:pointer; box-shadow:0 0 8px rgba(188,140,255,0.6); }
+</style>
+
+<!-- ====== JS ====== -->
+<script>
+    let _guildId = '';
+
+    function syncThreshold(val) {
+        const num = parseFloat(val).toFixed(2);
+        document.getElementById('threshold-value-display').textContent = num;
+        document.getElementById('sentiment-threshold').value = num;
+        document.getElementById('threshold-display').textContent = num;
+    }
+
+    function loadSupervisorData() {
+        const gid = document.getElementById('guild-id-input').value.trim();
+        if (!gid) { showToast('warning', 'Please enter a Guild ID.'); return; }
+        _guildId = gid;
+        SmartIdInput.saveId('guild', gid);
+
+        const feedStatus = document.getElementById('feed-status');
+        feedStatus.className = 'badge blue';
+        feedStatus.innerHTML = '<i class="fa-solid fa-spinner spinning" style="font-size:0.6rem;"></i> Loading...';
+
+        // Load stats
+        fetch(`/api/supervisor_stats/${gid}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) { showToast('error', 'Error: ' + data.error); return; }
+
+                animateCount(document.getElementById('toxic-caught'), data.toxic_caught || 0);
+                animateCount(document.getElementById('active-mutes'), data.active_mutes || 0);
+
+                const feed = document.getElementById('interventions-feed');
+                feed.innerHTML = '';
+
+                if (data.recent_interventions && data.recent_interventions.length > 0) {
+                    feedStatus.className = 'badge green';
+                    feedStatus.innerHTML = '<i class="fa-solid fa-circle" style="font-size:0.45rem;"></i> Live';
+                    data.recent_interventions.forEach((log, i) => {
+                        const isTox = log.event_type && log.event_type.includes('tox');
+                        const isWarn = log.event_type && (log.event_type.includes('warn') || log.event_type.includes('mute'));
+                        const color = isTox ? 'var(--danger)' : isWarn ? 'var(--warning)' : 'var(--accent-purple)';
+                        const icon  = isTox ? 'triangle-exclamation' : isWarn ? 'volume-xmark' : 'bolt';
+                        const time  = new Date(log.timestamp).toLocaleString();
+
+                        const item = document.createElement('div');
+                        item.className = 'intervention-item';
+                        item.style.borderLeftColor = color;
+                        item.style.animationDelay = `${i * 0.05}s`;
+                        item.innerHTML = `
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.35rem;">
+                                <strong style="font-size:0.88rem; color:${color}; display:flex; gap:0.4rem; align-items:center;">
+                                    <i class="fa-solid fa-${icon}"></i>
+                                    ${log.event_type || 'AI Event'}
+                                </strong>
+                                <span style="font-size:0.72rem; color:var(--text-secondary);">${time}</span>
+                            </div>
+                            <span style="font-size:0.85rem; color:var(--text-secondary);">${log.description || ''}</span>
+                        `;
+                        feed.appendChild(item);
+                    });
+                } else {
+                    feedStatus.className = 'badge blue';
+                    feedStatus.innerHTML = '<i class="fa-solid fa-circle" style="font-size:0.45rem;"></i> No Activity';
+                    feed.innerHTML = `<div style="text-align:center; padding:3rem 1rem; color:var(--text-secondary);">
+                        <i class="fa-solid fa-circle-check" style="font-size:2.5rem; color:var(--accent-green); margin-bottom:1rem; display:block;"></i>
+                        No recent AI interventions for this guild. All clear!
+                    </div>`;
+                }
+            })
+            .catch(() => showToast('error', 'Failed to load supervisor stats.'));
+
+        // Load settings
+        fetch(`/api/get_settings/${gid}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.ai_sentiment_threshold) {
+                    const val = parseFloat(data.ai_sentiment_threshold);
+                    document.getElementById('sentiment-threshold-range').value = val;
+                    syncThreshold(val);
+                }
+                if (data.ai_enabled !== undefined) {
+                    const enabled = data.ai_enabled === 'true' || data.ai_enabled === true;
+                    document.getElementById('ai-enabled-toggle').checked = enabled;
+                    updateToggleLabel(enabled);
+                }
+            });
+    }
+
+    function saveToggle() {
+        const enabled = document.getElementById('ai-enabled-toggle').checked;
+        updateToggleLabel(enabled);
+        saveSetting('ai_enabled', String(enabled));
+    }
+
+    function updateToggleLabel(enabled) {
+        const label = document.getElementById('ai-toggle-label');
+        if (enabled) {
+            label.className = 'badge green';
+            label.innerHTML = '<i class="fa-solid fa-circle" style="font-size:0.45rem;"></i> Active';
+        } else {
+            label.className = 'badge red';
+            label.innerHTML = '<i class="fa-solid fa-circle" style="font-size:0.45rem;"></i> Disabled';
+        }
+    }
+
+    function saveSetting(key, value) {
+        if (!_guildId) { showToast('warning', 'Please load a guild first.'); return; }
+        fetch('/api/save_setting', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guild_id: _guildId, key, value })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) showToast('success', `<b>${key.replace(/_/g,' ')}</b> saved.`);
+            else showToast('error', 'Error: ' + (data.error || 'Unknown'));
+        })
+        .catch(() => showToast('error', 'Network error while saving.'));
+    }
+
+    function analyzeText() {
+        const text = document.getElementById('test-text').value.trim();
+        if (!text) { showToast('warning', 'Please enter some text to analyze.'); return; }
+
+        // Simple VADER-like scoring simulation (client side preview via keyword heuristics)
+        // The real engine is server-side, we use the ticket endpoint as proxy if channel is known
+        // For direct text, we'll show a UI placeholder noting it's approximate.
+        showToast('info', 'Text analysis requires the server API. Use a Ticket Channel ID below for live analysis.');
+    }
+
+    function analyzeTicket() {
+        const channelId = document.getElementById('ticket-channel-id').value.trim();
+        if (!channelId) { showToast('warning', 'Please enter a Channel ID.'); return; }
+        SmartIdInput.saveId('channel', channelId);
+
+        fetch(`/api/analyze_sentiment/${channelId}`)
+            .then(r => r.json())
+            .then(data => {
+                const box = document.getElementById('ticket-result-box');
+                const result = document.getElementById('ticket-result');
+                result.classList.remove('hidden');
+
+                const sentimentColors = { Positive: 'var(--accent-green)', Neutral: 'var(--accent-blue)', Negative: 'var(--danger)' };
+                const sentimentIcons  = { Positive: 'face-smile', Neutral: 'face-meh', Negative: 'face-frown' };
+                const s = data.sentiment || 'Neutral';
+                const score = (data.score || 0).toFixed(3);
+
+                box.style.borderLeftColor = sentimentColors[s] || 'var(--accent-blue)';
+                box.style.background = `rgba(${s === 'Positive' ? '63,185,80' : s === 'Negative' ? '248,81,73' : '88,166,255'}, 0.08)`;
+                box.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem;">
+                        <i class="fa-solid fa-${sentimentIcons[s]}" style="font-size:1.5rem; color:${sentimentColors[s]};"></i>
+                        <strong style="font-size:1rem; color:${sentimentColors[s]};">${s}</strong>
+                        <span class="badge ${s === 'Positive' ? 'green' : s === 'Negative' ? 'red' : 'blue'}" style="margin-left:auto;">Score: ${score}</span>
+                    </div>
+                    <span style="font-size:0.85rem; color:var(--text-secondary);">Compound VADER score for ticket channel <b>${channelId}</b>.</span>
+                `;
+            })
+            .catch(() => showToast('error', 'Could not analyze ticket.'));
+    }
+
+    // Auto-refresh every 10s if guild is loaded
+    setInterval(() => { if (_guildId) loadSupervisorData(); }, 10000);
+</script>
+
+{% endblock %}

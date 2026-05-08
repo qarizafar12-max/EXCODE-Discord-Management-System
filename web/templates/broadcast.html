@@ -1,0 +1,167 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="page-header fade-in">
+    <div>
+        <h1><i class="fa-solid fa-bullhorn"></i> Communication</h1>
+        <p>Send announcements to channels or direct messages to users.</p>
+    </div>
+</div>
+
+<div class="tabs-container slide-up"
+    style="--delay: 0.1s; margin-bottom: 1rem; display: flex; gap: 1rem; justify-content: center;">
+    <button class="btn secondary active" id="tab-broadcast" onclick="switchTab('broadcast')">
+        <i class="fa-solid fa-tower-broadcast"></i> Broadcast
+    </button>
+    <button class="btn secondary" id="tab-dm" onclick="switchTab('dm')">
+        <i class="fa-solid fa-paper-plane"></i> Direct Message
+    </button>
+</div>
+
+<div class="card glass slide-up" style="max-width: 800px; margin: 0 auto; --delay: 0.2s">
+    <div class="card-body">
+        <div class="form-group">
+            <label>Guild ID</label>
+            <input type="text" id="guild-id" class="input-field" placeholder="Server ID..." data-smart-id="guild">
+        </div>
+
+        <div id="target-container" class="form-group">
+            <label id="target-label">Channel ID</label>
+            <input type="text" id="target-id" class="input-field" placeholder="Target Channel ID..." data-smart-id="channel">
+        </div>
+
+        <div id="mass-dm-container" class="form-group"
+            style="display: none; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="checkbox" id="is-mass-dm" style="cursor: pointer; width: 20px; height: 20px;"
+                onchange="toggleTargetInput()">
+            <label for="is-mass-dm" style="cursor: pointer; margin-bottom: 0;">Send to all members (Mass DM)</label>
+        </div>
+
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" id="msg-title" class="input-field" placeholder="Announcement Title...">
+        </div>
+
+        <div class="form-group">
+            <label>Message Content</label>
+            <textarea id="msg-content" rows="6" class="input-field" placeholder="Type your message here..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Image URL (Optional)</label>
+            <input type="text" id="msg-image" class="input-field" placeholder="https://... (Full width image)">
+        </div>
+
+        <div class="form-group">
+            <label>Thumbnail URL (Optional)</label>
+            <input type="text" id="msg-thumbnail" class="input-field" placeholder="https://... (Small side image)">
+        </div>
+
+        <button class="btn primary" id="send-btn" style="width: 100%; margin-top: 1rem;" onclick="handleSubmit()">
+            <i class="fa-solid fa-paper-plane"></i> Send Broadcast
+        </button>
+    </div>
+</div>
+
+<style>
+    .tabs-container .btn.active {
+        background: rgba(88, 166, 255, 0.15);
+        color: var(--accent-blue);
+        border: 1px solid rgba(88, 166, 255, 0.35);
+    }
+</style>
+
+<script>
+    let currentMode = 'broadcast';
+
+    function switchTab(mode) {
+        currentMode = mode;
+
+        // Update tabs UI
+        document.getElementById('tab-broadcast').classList.toggle('active', mode === 'broadcast');
+        document.getElementById('tab-dm').classList.toggle('active', mode === 'dm');
+
+        // Update label and placeholder
+        const label = document.getElementById('target-label');
+        const input = document.getElementById('target-id');
+        const btn = document.getElementById('send-btn');
+
+        if (mode === 'broadcast') {
+            label.innerText = 'Channel ID';
+            input.placeholder = 'Target Channel ID...';
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Broadcast';
+            document.getElementById('mass-dm-container').style.display = 'none';
+            document.getElementById('target-container').style.display = 'block';
+        } else {
+            label.innerText = 'User ID';
+            input.placeholder = 'Target User ID...';
+            btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Send Direct Message';
+            document.getElementById('mass-dm-container').style.display = 'flex';
+            toggleTargetInput(); // Check checkbox state
+        }
+    }
+
+    function toggleTargetInput() {
+        const isMass = document.getElementById('is-mass-dm').checked;
+        const targetContainer = document.getElementById('target-container');
+        const btn = document.getElementById('send-btn');
+
+        targetContainer.style.display = isMass ? 'none' : 'block';
+        btn.innerHTML = isMass ? '<i class="fa-solid fa-bullhorn"></i> Send Mass DM' : '<i class="fa-solid fa-paper-plane"></i> Send Direct Message';
+    }
+
+    function handleSubmit() {
+        const guildId = document.getElementById('guild-id').value;
+        const targetId = document.getElementById('target-id').value;
+        const title = document.getElementById('msg-title').value;
+        const message = document.getElementById('msg-content').value;
+        const image = document.getElementById('msg-image').value;
+        const thumbnail = document.getElementById('msg-thumbnail').value;
+        const isMass = currentMode === 'dm' && document.getElementById('is-mass-dm').checked;
+
+        if (!guildId || (!isMass && !targetId) || !message) {
+            showToast('warning', `Please fill in Guild ID, ${currentMode === 'broadcast' ? 'Channel' : 'User'} ID, and Message.`);
+            return;
+        }
+
+        const btn = document.getElementById('send-btn');
+        btn.disabled = true;
+        btn.innerText = "Sending...";
+
+        const endpoint = currentMode === 'broadcast' ? '/api/send_broadcast' : '/api/send_dm';
+        const payload = {
+            guild_id: guildId,
+            title: title,
+            message: message,
+            image_url: image,
+            thumbnail_url: thumbnail,
+            is_mass: isMass
+        };
+
+        if (currentMode === 'broadcast') {
+            payload.channel_id = targetId;
+        } else {
+            payload.user_id = targetId;
+        }
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> Send ${currentMode === 'broadcast' ? 'Broadcast' : 'Direct Message'}`;
+
+                if (data.success) {
+                    SmartIdInput.saveId('guild', guildId);
+                    if (currentMode === 'broadcast' && targetId) SmartIdInput.saveId('channel', targetId);
+                    showToast('success', `${currentMode === 'broadcast' ? 'Broadcast' : 'Direct Message'} queued successfully!`);
+                } else {
+                    showToast('error', `Failed: ${data.error || 'Unknown error.'}`);
+                }
+            });
+    }
+</script>
+{% endblock %}
